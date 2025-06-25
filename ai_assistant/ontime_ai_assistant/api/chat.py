@@ -4,6 +4,20 @@ from ai_assistant.ontime_ai_assistant.api.frappe_command_executor import execute
 from ai_assistant.ontime_ai_assistant.api.document_analysis import upload_document as doc_upload_document, get_processing_status
 from ai_assistant.ontime_ai_assistant.api.erp_knowledge_base import get_erp_explanation, get_erp_steps
 
+# Import spaCy for NLP
+import spacy
+import re
+
+# Load English and Arabic models (ensure these are downloaded on the Frappe server)
+try:
+    nlp_en = spacy.load("en_core_web_sm")
+except OSError:
+    frappe.log_error("English spaCy model not found. Please run: python3 -m spacy download en_core_web_sm", "NLP Model Error")
+try:
+    nlp_ar = spacy.load("ar_core_news_sm")
+except OSError:
+    frappe.log_error("Arabic spaCy model not found. Please run: python3 -m spacy download ar_core_news_sm", "NLP Model Error")
+
 @frappe.whitelist()
 def get_chat_response(user_query):
     try:
@@ -24,80 +38,104 @@ def get_chat_response(user_query):
 
         lower_query = user_query.lower()
 
-        # --- ERP Command Parsing ---
-        # Example Queries:
-        # "Create a new item group for electronics"
-        # "Show me overdue invoices for April"
-        # "Analyze this Excel sheet and generate items"
-        # "Upload contract.pdf and extract customer info"
-        # "Show me all quotations for client Ahmed."
-        # "كم عدد فواتير البيع اليوم؟" (How many sales invoices today?)
-        # "أنشئ عميل جديد باسم سالم" (Create a new customer named Salem)
-        # "افتح قائمة العملاء" (Open customer list)
+        # Determine language and process with appropriate NLP model
+        # Simple heuristic: check for common Arabic words
+        if any(char >= '\u0600' and char <= '\u06FF' for char in user_query):
+            doc = nlp_ar(user_query) if 'nlp_ar' in locals() else None
+            lang = 'ar'
+        else:
+            doc = nlp_en(user_query) if 'nlp_en' in locals() else None
+            lang = 'en'
 
-        # Create/Update/Delete Records
-        if "create" in lower_query and "item group" in lower_query:
-            command_type = "create"
-            doctype_name = "Item Group"
-            parts = lower_query.split("for")
-            if len(parts) > 1:
-                item_group_name = parts[1].strip().replace("electronics", "Electronics").title()
-                data = {"item_group_name": item_group_name, "is_group": 1}
-            is_erp_command = True
-        elif "أنشئ عميل جديد باسم" in lower_query or "create a new customer named" in lower_query:
-            command_type = "create"
-            doctype_name = "Customer"
-            customer_name = lower_query.split("باسم")[-1].strip().title() if "باسم" in lower_query else lower_query.split("named")[-1].strip().title()
-            data = {"customer_name": customer_name}
-            is_erp_command = True
-        elif "create a sales order for" in lower_query:
-            command_type = "create"
-            doctype_name = "Sales Order"
-            customer_name = lower_query.split("for")[-1].strip().title()
-            data = {"customer": customer_name, "naming_series": "SO-"}
-            response_message = "Sales Order creation initiated. Please provide more details like items and quantities."
-            is_erp_command = True
+        # --- Refined ERP Command Parsing using NLP and Regex ---
 
-        # Read/Analyze ERP Data
-        elif "show me overdue invoices" in lower_query:
-            command_type = "read"
-            doctype_name = "Sales Invoice"
-            filters = {"due_date": ["<=", frappe.utils.today()], "outstanding_amount": [">", 0]}
-            if "for april" in lower_query:
-                filters["posting_date"] = [">=", "2025-04-01"], ["<=", "2025-04-30"]
-            is_erp_command = True
-        elif "show me all quotations for client" in lower_query:
-            command_type = "read"
-            doctype_name = "Quotation"
-            client_name = lower_query.split("for client")[-1].strip().title()
-            filters = {"customer_name": client_name}
-            is_erp_command = True
-        elif "كم عدد فواتير البيع اليوم؟" in lower_query or "how many sales invoices today" in lower_query:
-            command_type = "read"
-            doctype_name = "Sales Invoice"
-            filters = {"posting_date": frappe.utils.today()}
-            fields = ["count(name) as total_invoices"]
-            is_erp_command = True
+        # Intent: Create Record
+        if "create" in lower_query or "أنشئ" in lower_query:
+            if "item group" in lower_query or "مجموعة أصناف" in lower_query:
+                command_type = "create"
+                doctype_name = "Item Group"
+                # Extract item group name more robustly
+                match = re.search(r"(?:for|باسم|بخصوص)\s+([\w\s]+)", user_query, re.IGNORECASE)
+                if match:
+                    item_group_name = match.group(1).strip().title()
+                    data = {"item_group_name": item_group_name, "is_group": 1}
+                is_erp_command = True
+            elif "customer" in lower_query or "عميل" in lower_query:
+                command_type = "create"
+                doctype_name = "Customer"
+                customer_name = ""
+                if lang == 'ar':
+                    match = re.search(r"باسم\s+([\w\s]+)", user_query)
+                    if match: customer_name = match.group(1).strip()
+                else:
+                    match = re.search(r"named\s+([\w\s]+)", user_query)
+                    if match: customer_name = match.group(1).strip()
+                if customer_name: data = {"customer_name": customer_name.title()}
+                is_erp_command = True
+            elif "sales order" in lower_query or "أمر بيع" in lower_query:
+                command_type = "create"
+                doctype_name = "Sales Order"
+                customer_name = ""
+                if lang == 'ar':
+                    match = re.search(r"لـ\s+([\w\s]+)", user_query)
+                    if match: customer_name = match.group(1).strip()
+                else:
+                    match = re.search(r"for\s+([\w\s]+)", user_query)
+                    if match: customer_name = match.group(1).strip()
+                if customer_name: data = {"customer": customer_name.title(), "naming_series": "SO-"}
+                response_message = "Sales Order creation initiated. Please provide more details like items and quantities."
+                is_erp_command = True
+
+        # Intent: Read Data
+        elif "show me" in lower_query or "اعرض لي" in lower_query:
+            if "overdue invoices" in lower_query or "فواتير متأخرة" in lower_query:
+                command_type = "read"
+                doctype_name = "Sales Invoice"
+                filters = {"due_date": ["<=", frappe.utils.today()], "outstanding_amount": [">", 0]}
+                if "for april" in lower_query or "لشهر أبريل" in lower_query:
+                    filters["posting_date"] = [">=", "2025-04-01"], ["<=", "2025-04-30"]
+                is_erp_command = True
+            elif "quotations for client" in lower_query or "عروض أسعار للعميل" in lower_query:
+                command_type = "read"
+                doctype_name = "Quotation"
+                client_name = ""
+                if lang == 'ar':
+                    match = re.search(r"للعميل\s+([\w\s]+)", user_query)
+                    if match: client_name = match.group(1).strip()
+                else:
+                    match = re.search(r"for client\s+([\w\s]+)", user_query)
+                    if match: client_name = match.group(1).strip()
+                if client_name: filters = {"customer_name": client_name.title()}
+                is_erp_command = True
+            elif "sales invoices today" in lower_query or "فواتير البيع اليوم" in lower_query:
+                command_type = "read"
+                doctype_name = "Sales Invoice"
+                filters = {"posting_date": frappe.utils.today()}
+                fields = ["count(name) as total_invoices"]
+                is_erp_command = True
 
         # File Understanding
-        elif "analyze" in lower_query and ("excel sheet" in lower_query or "pdf" in lower_query or "word" in lower_query or "image" in lower_query):
-            command_type = "analyze_document"
-            response_message = "Please upload the file for analysis. File analysis functionality is under development."
-            is_erp_command = True
-        elif "upload" in lower_query and ("pdf" in lower_query or "word" in lower_query or "excel" in lower_query or "image" in lower_query):
-            command_type = "upload_document"
-            response_message = "Please upload the file. File upload functionality is under development."
-            is_erp_command = True
+        elif "analyze" in lower_query or "تحليل" in lower_query:
+            if any(ext in lower_query for ext in ["excel", "pdf", "word", "image"]):
+                command_type = "analyze_document"
+                response_message = "Please upload the file for analysis. File analysis functionality is under development."
+                is_erp_command = True
+        elif "upload" in lower_query or "رفع" in lower_query:
+            if any(ext in lower_query for ext in ["pdf", "word", "excel", "image"]):
+                command_type = "upload_document"
+                response_message = "Please upload the file. File upload functionality is under development."
+                is_erp_command = True
 
-        # Navigate Between DocTypes (Frontend will handle this, backend just acknowledges)
-        elif "افتح قائمة العملاء" in lower_query or "go to customer list" in lower_query:
-            response_message = {"status": "navigate", "path": "/app/customer", "message": "Opening Customer List."} # Frontend will interpret this
-            is_erp_command = True
-        elif "go to item group settings" in lower_query:
-            response_message = {"status": "navigate", "path": "/app/item-group", "message": "Opening Item Group settings."} # Frontend will interpret this
-            is_erp_command = True
+        # Intent: Navigate
+        elif "go to" in lower_query or "افتح" in lower_query:
+            if "customer list" in lower_query or "قائمة العملاء" in lower_query:
+                response_message = {"status": "navigate", "path": "/app/customer", "message": "Opening Customer List."} # Frontend will interpret this
+                is_erp_command = True
+            elif "item group settings" in lower_query or "إعدادات مجموعة الأصناف" in lower_query:
+                response_message = {"status": "navigate", "path": "/app/item-group", "message": "Opening Item Group settings."} # Frontend will interpret this
+                is_erp_command = True
 
-        # ERP Training and Term Explanation
+        # Intent: ERP Training and Term Explanation
         elif "what is" in lower_query or "ما هو" in lower_query or "define" in lower_query or "ما معنى" in lower_query:
             term = user_query.replace("what is", "").replace("ما هو", "").replace("define", "").replace("ما معنى", "").strip()
             ai_settings = frappe.get_single("AI Settings")
@@ -105,7 +143,7 @@ def get_chat_response(user_query):
             ai_provider = frappe.get_doc("AI Provider", default_ai_provider_name)
             api_key = ai_provider.api_key
             response = get_erp_explanation(term, user_roles, default_ai_provider_name, api_key)
-            is_erp_command = True # Treat as ERP command for logging, but it\"s an AI response
+            is_erp_command = True # Treat as ERP command for logging, but it\'s an AI response
 
         elif "how to" in lower_query or "steps for" in lower_query or "كيف" in lower_query or "خطوات" in lower_query:
             process = user_query.replace("how to", "").replace("steps for", "").replace("كيف", "").replace("خطوات", "").strip()
@@ -114,13 +152,39 @@ def get_chat_response(user_query):
             ai_provider = frappe.get_doc("AI Provider", default_ai_provider_name)
             api_key = ai_provider.api_key
             response = get_erp_steps(process, user_roles, default_ai_provider_name, api_key)
-            is_erp_command = True # Treat as ERP command for logging, but it\"s an AI response
+            is_erp_command = True # Treat as ERP command for logging, but it\'s an AI response
+
+        # Intent: Generate Script (New Logic)
+        elif "generate script" in lower_query or "إنشاء سكريبت" in lower_query:
+            command_type = "generate_script"
+            script_type = ""
+            prompt = user_query
+
+            # Extract script type (e.g., Client Script, Server Script)
+            if "client script" in lower_query or "سكريبت عميل" in lower_query:
+                script_type = "Client Script"
+            elif "server script" in lower_query or "سكريبت خادم" in lower_query:
+                script_type = "Server Script"
+            else:
+                script_type = "Python Script" # Default or ask for clarification
+            
+            # Extract prompt for script generation
+            # This needs more advanced NLP to get the exact prompt
+            # For now, we\'ll use the whole query as prompt, or refine later
+            
+            ai_settings = frappe.get_single("AI Settings")
+            default_ai_provider_name = ai_settings.default_ai_provider
+            ai_provider = frappe.get_doc("AI Provider", default_ai_provider_name)
+            api_key = ai_provider.api_key
+            
+            response = generate_script(prompt, script_type, default_ai_provider_name, api_key)
+            is_erp_command = True
 
         # --- Execute Command or Get AI Response ---
         if is_erp_command:
             if response_message:
                 response = response_message
-            elif command_type in ["what is", "how to"]: # These are handled by erp_knowledge_base
+            elif command_type in ["what is", "how to", "generate_script"]: # These are handled by erp_knowledge_base or generate_script
                 pass # Response is already generated above
             else:
                 response = execute_frappe_command(command_type, doctype_name, data=data, filters=filters, user=current_user, fields=fields, group_by=group_by, order_by=order_by, limit_start=limit_start, limit_page_length=limit_page_length)
