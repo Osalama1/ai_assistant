@@ -4,12 +4,19 @@ from litellm import completion
 @frappe.whitelist()
 def get_ai_response(query_text, query_type, ai_provider_name, api_key):
     try:
+        model = None
         if ai_provider_name == "Gemini":
             model = "gemini/gemini-pro"
         elif ai_provider_name == "OpenAI":
             model = "gpt-3.5-turbo"
         elif ai_provider_name == "DeepSeek":
-            model = "ollama/deepseek-coder"
+            model = "ollama/deepseek-coder" # Assuming Ollama is set up for DeepSeek
+        elif ai_provider_name == "Claude":
+            model = "claude-2" # Example Claude model, adjust as needed
+        elif ai_provider_name == "Cohere":
+            model = "command-r" # Example Cohere model, adjust as needed
+        elif ai_provider_name == "Mistral":
+            model = "mistral/mistral-tiny" # Example Mistral model, adjust as needed
         else:
             return f"AI Provider {ai_provider_name} not supported yet."
 
@@ -27,12 +34,19 @@ def get_ai_response(query_text, query_type, ai_provider_name, api_key):
 @frappe.whitelist()
 def generate_script(prompt, script_type, ai_provider_name, api_key):
     try:
+        model = None
         if ai_provider_name == "Gemini":
             model = "gemini/gemini-pro"
         elif ai_provider_name == "OpenAI":
             model = "gpt-3.5-turbo"
         elif ai_provider_name == "DeepSeek":
             model = "ollama/deepseek-coder"
+        elif ai_provider_name == "Claude":
+            model = "claude-2"
+        elif ai_provider_name == "Cohere":
+            model = "command-r"
+        elif ai_provider_name == "Mistral":
+            model = "mistral/mistral-tiny"
         else:
             return f"AI Provider {ai_provider_name} not supported for script generation."
 
@@ -61,8 +75,6 @@ def generate_script(prompt, script_type, ai_provider_name, api_key):
 def analyze_document(file_path, analysis_prompt):
     # This is a placeholder for the full document analysis implementation in Phase 3
     # It will involve reading the file, extracting content, and sending it to the AI for analysis
-    return {"status": "success", "message": f"Document analysis for {file_path} with prompt 
-{analysis_prompt}
- will be implemented in Phase 3."}
+    return {"status": "success", "message": f"Document analysis for {file_path} with prompt \n{analysis_prompt}\n will be implemented in Phase 3."}
 
 

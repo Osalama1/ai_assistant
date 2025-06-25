@@ -1,6 +1,7 @@
 import frappe
-from ai_assistant.ontime_ai_assistant.api.ai_service import get_ai_response, generate_script, analyze_document
+from ai_assistant.ontime_ai_assistant.api.ai_service import get_ai_response, generate_script
 from ai_assistant.ontime_ai_assistant.api.frappe_command_executor import execute_frappe_command
+from ai_assistant.ontime_ai_assistant.api.document_analysis import upload_document as doc_upload_document, get_processing_status
 
 @frappe.whitelist()
 def get_chat_response(user_query):
@@ -41,19 +42,17 @@ def get_chat_response(user_query):
     # Analyze this Excel sheet and generate items
     elif "analyze" in lower_query and ("excel sheet" in lower_query or "pdf" in lower_query or "word" in lower_query or "image" in lower_query):
         command_type = "analyze_document"
-        # For now, we assume the file path will be provided separately or via a frontend upload mechanism
-        # This will be handled more robustly in Phase 3
+        # This will require a file_url and analysis_prompt from the frontend
+        # For now, we return a message indicating the need for file upload
         response_message = "Please upload the file for analysis. File analysis functionality is under development."
         is_erp_command = True
 
     # Upload contract.pdf and extract customer info
     elif "upload" in lower_query and ("pdf" in lower_query or "word" in lower_query or "excel" in lower_query or "image" in lower_query):
         command_type = "upload_document"
-        # Similar to analyze, this will be handled more robustly in Phase 3
+        # This will require a file_url, document_name, and document_type from the frontend
         response_message = "Please upload the file. File upload functionality is under development."
         is_erp_command = True
-
-    # Create a new item group for electronics (duplicate, already handled above)
 
     # Show me all quotations for client Ahmed.
     elif "show me all quotations" in lower_query and "for client" in lower_query:
@@ -63,5 +62,87 @@ def get_chat_response(user_query):
         filters = {"customer_name": client_name}
         is_erp_command = True
 
-    # Smart Data Entry: 
+    # --- Execute Command or Get AI Response ---
+    if is_erp_command:
+        if response_message:
+            response = {"status": "info", "message": response_message}
+        else:
+            response = execute_frappe_command(command_type, doctype_name, data=data, filters=filters, user=current_user)
+    else:
+        modified_query = user_query
+        if "Sales User" in user_roles:
+            modified_query = f"{user_query} related to sales"
+        elif "Accounts User" in user_roles:
+            modified_query = f"{user_query} related to accounting"
+
+        ai_settings = frappe.get_single("AI Settings")
+        default_ai_provider_name = ai_settings.default_ai_provider
+
+        ai_provider = frappe.get_doc("AI Provider", default_ai_provider_name)
+        api_key = ai_provider.api_key
+
+        response = get_ai_response(modified_query, "Natural Language", default_ai_provider_name, api_key)
+
+    frappe.get_doc({
+        "doctype": "AI Query",
+        "query_text": user_query,
+        "response_text": str(response), # Convert response to string for logging
+        "query_type": "Natural Language" if not is_erp_command else command_type.replace("_", " ").title(),
+        "user": current_user,
+        "query_date": frappe.utils.now_datetime()
+    }).insert(ignore_permissions=True)
+
+    return response
+
+@frappe.whitelist()
+def quick_query(query_text):
+    current_user = frappe.session.user
+    user_roles = frappe.get_roles(current_user)
+
+    modified_query = query_text
+    if "Sales User" in user_roles:
+        modified_query = f"{query_text} related to sales"
+    elif "Accounts User" in user_roles:
+        modified_query = f"{query_text} related to accounting"
+
+    ai_settings = frappe.get_single("AI Settings")
+    default_ai_provider_name = ai_settings.default_ai_provider
+
+    ai_provider = frappe.get_doc("AI Provider", default_ai_provider_name)
+    api_key = ai_provider.api_key
+
+    response = get_ai_response(modified_query, "Natural Language", default_ai_provider_name, api_key)
+
+    frappe.get_doc({
+        "doctype": "AI Query",
+        "query_text": query_text,
+        "response_text": str(response), # Convert response to string for logging
+        "query_type": "Quick Query",
+        "user": current_user,
+        "query_date": frappe.utils.now_datetime()
+    }).insert(ignore_permissions=True)
+
+    return response
+
+@frappe.whitelist()
+def generate_script_from_prompt(prompt, script_type):
+    ai_settings = frappe.get_single("AI Settings")
+    default_ai_provider_name = ai_settings.default_ai_provider
+
+    ai_provider = frappe.get_doc("AI Provider", default_ai_provider_name)
+    api_key = ai_provider.api_key
+
+    generated_script = generate_script(prompt, script_type, default_ai_provider_name, api_key)
+
+    return generated_script
+
+@frappe.whitelist()
+def upload_and_analyze_document(file_url, document_name, document_type, analysis_prompt=None):
+    # Call the document_analysis module to handle the upload and analysis
+    return doc_upload_document(file_url, document_name, document_type, analysis_prompt)
+
+@frappe.whitelist()
+def get_document_analysis_status(processor_id):
+    return get_processing_status(processor_id)
+
 
