@@ -2,6 +2,7 @@ import frappe
 from ai_assistant.ontime_ai_assistant.api.ai_service import get_ai_response, generate_script
 from ai_assistant.ontime_ai_assistant.api.frappe_command_executor import execute_frappe_command
 from ai_assistant.ontime_ai_assistant.api.document_analysis import upload_document as doc_upload_document, get_processing_status
+from ai_assistant.ontime_ai_assistant.api.erp_knowledge_base import get_erp_explanation, get_erp_steps
 
 @frappe.whitelist()
 def get_chat_response(user_query):
@@ -95,10 +96,31 @@ def get_chat_response(user_query):
         response_message = {"status": "navigate", "path": "/app/item-group", "message": "Opening Item Group settings."} # Frontend will interpret this
         is_erp_command = True
 
+    # ERP Training and Term Explanation
+    elif "what is" in lower_query or "ما هو" in lower_query or "define" in lower_query or "ما معنى" in lower_query:
+        term = user_query.replace("what is", "").replace("ما هو", "").replace("define", "").replace("ما معنى", "").strip()
+        ai_settings = frappe.get_single("AI Settings")
+        default_ai_provider_name = ai_settings.default_ai_provider
+        ai_provider = frappe.get_doc("AI Provider", default_ai_provider_name)
+        api_key = ai_provider.api_key
+        response = get_erp_explanation(term, user_roles, default_ai_provider_name, api_key)
+        is_erp_command = True # Treat as ERP command for logging, but it's an AI response
+
+    elif "how to" in lower_query or "steps for" in lower_query or "كيف" in lower_query or "خطوات" in lower_query:
+        process = user_query.replace("how to", "").replace("steps for", "").replace("كيف", "").replace("خطوات", "").strip()
+        ai_settings = frappe.get_single("AI Settings")
+        default_ai_provider_name = ai_settings.default_ai_provider
+        ai_provider = frappe.get_doc("AI Provider", default_ai_provider_name)
+        api_key = ai_provider.api_key
+        response = get_erp_steps(process, user_roles, default_ai_provider_name, api_key)
+        is_erp_command = True # Treat as ERP command for logging, but it's an AI response
+
     # --- Execute Command or Get AI Response ---
     if is_erp_command:
         if response_message:
             response = response_message
+        elif command_type in ["what is", "how to"]: # These are handled by erp_knowledge_base
+            pass # Response is already generated above
         else:
             response = execute_frappe_command(command_type, doctype_name, data=data, filters=filters, user=current_user, fields=fields, group_by=group_by, order_by=order_by, limit_start=limit_start, limit_page_length=limit_page_length)
     else:
