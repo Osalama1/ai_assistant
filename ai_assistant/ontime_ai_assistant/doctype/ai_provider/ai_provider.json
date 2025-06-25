@@ -1,7 +1,7 @@
 {
  "doctype": "DocType",
  "name": "AI Provider",
- "module": "AI Assistant",
+ "module": "Ontime Ai Assistant",
  "issingle": 1,
  "fields": [
   {

@@ -1,7 +1,7 @@
 {
  "doctype": "DocType",
  "name": "AI Query",
- "module": "AI Assistant",
+ "module": "Ontime Ai Assistant",
  "autoname": "autoincrement",
  "fields": [
   {
