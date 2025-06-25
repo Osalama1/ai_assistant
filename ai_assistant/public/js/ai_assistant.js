@@ -3,7 +3,7 @@
  * Provides functionality for the AI Assistant interface
  */
 
-// Define AIAssistant class globally or ensure it\'s accessible
+// Define AIAssistant class globally or ensure it\"s accessible
 class AIAssistant {
     constructor() {
         this.isInitialized = false;
@@ -27,7 +27,7 @@ class AIAssistant {
 
     setupEventListeners() {
         // Chat widget toggle (if applicable, assuming a floating widget)
-        const chatToggle = document.querySelector(\'\.ai-chat-toggle\');
+        const chatToggle = document.querySelector(\'\\.ai-chat-toggle\');
         if (chatToggle) {
             chatToggle.addEventListener(\'click\', () => {
                 this.toggleChatWidget();
@@ -68,6 +68,6 @@ class AIAssistant {
 
         // Example query clicks (delegated to document)
         document.addEventListener(\'click\', (e) => {
-            if (e.target.matches(\'\.quick-action\')) {
-                // Check if it\'s the \n\n
+            if (e.target.matches(\'\\.quick-action\')) {
+                // Check if it\"s the \n\n
 
