@@ -3,7 +3,7 @@
  * Provides functionality for the AI Assistant interface
  */
 
-// Define AIAssistant class globally or ensure it's accessible
+// Define AIAssistant class globally or ensure it\'s accessible
 class AIAssistant {
     constructor() {
         this.isInitialized = false;
@@ -22,52 +22,52 @@ class AIAssistant {
         this.loadChatHistory();
         this.isInitialized = true;
         
-        console.log('AI Assistant initialized');
+        console.log(\'AI Assistant initialized\');
     }
 
     setupEventListeners() {
         // Chat widget toggle (if applicable, assuming a floating widget)
-        const chatToggle = document.querySelector('.ai-chat-toggle');
+        const chatToggle = document.querySelector(\'\.ai-chat-toggle\');
         if (chatToggle) {
-            chatToggle.addEventListener('click', () => {
+            chatToggle.addEventListener(\'click\', () => {
                 this.toggleChatWidget();
             });
         }
 
         // File upload handling
-        const fileInput = document.getElementById('fileInput');
+        const fileInput = document.getElementById(\'fileInput\');
         if (fileInput) {
-            fileInput.addEventListener('change', (e) => {
+            fileInput.addEventListener(\'change\', (e) => {
                 this.handleFileSelect(e.target.files);
             });
         }
 
         // Drag and drop
-        const fileUploadArea = document.getElementById('fileUploadArea');
+        const fileUploadArea = document.getElementById(\'fileUploadArea\');
         if (fileUploadArea) {
-            fileUploadArea.addEventListener('dragover', (e) => {
+            fileUploadArea.addEventListener(\'dragover\', (e) => {
                 e.preventDefault();
-                fileUploadArea.classList.add('dragover');
+                fileUploadArea.classList.add(\'dragover\');
             });
 
-            fileUploadArea.addEventListener('dragleave', (e) => {
+            fileUploadArea.addEventListener(\'dragleave\', (e) => {
                 e.preventDefault();
-                fileUploadArea.classList.remove('dragover');
+                fileUploadArea.classList.remove(\'dragover\');
             });
 
-            fileUploadArea.addEventListener('drop', (e) => {
+            fileUploadArea.addEventListener(\'drop\', (e) => {
                 e.preventDefault();
-                fileUploadArea.classList.remove('dragover');
+                fileUploadArea.classList.remove(\'dragover\');
                 this.handleFileSelect(e.dataTransfer.files);
             });
 
-            fileUploadArea.addEventListener('click', () => {
+            fileUploadArea.addEventListener(\'click\', () => {
                 fileInput.click();
             });
         }
 
         // Example query clicks (delegated to document)
-        document.addEventListener('click', (e) => {
-            if (e.target.matches('.quick-action')) {
-                // Check if it's the 
+        document.addEventListener(\'click\', (e) => {
+            if (e.target.matches(\'\.quick-action\')) {
+                // Check if it\'s the \n\n
 
