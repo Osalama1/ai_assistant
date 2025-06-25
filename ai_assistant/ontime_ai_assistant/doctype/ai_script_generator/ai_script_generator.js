@@ -6,3 +6,10 @@
 
 // 	},
 // });
+
+frappe.ui.form.on("AI Script Generator", {
+	refresh: function(frm) {
+
+	}
+});
+

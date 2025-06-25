@@ -7,3 +7,10 @@ from frappe.model.document import Document
 
 class AIScriptGenerator(Document):
 	pass
+
+import frappe
+from frappe.model.document import Document
+
+class AIScriptGenerator(Document):
+	pass
+

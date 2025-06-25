@@ -1,0 +1,45 @@
+/* Add your CSS styles here for AI Assistant UI */
+.ai-chat-container {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.ai-chat-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+.ai-chat-messages {
+    max-height: 400px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: 4px;
+}
+.ai-chat-input-area {
+    display: flex;
+}
+.ai-chat-input-area textarea {
+    flex-grow: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    resize: none;
+}
+.ai-chat-input-area button {
+    margin-left: 10px;
+    padding: 10px 15px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.ai-chat-input-area button:hover {
+    background-color: #0056b3;
+}
+

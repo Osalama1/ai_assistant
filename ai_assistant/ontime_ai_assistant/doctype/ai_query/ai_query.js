@@ -6,3 +6,10 @@
 
 // 	},
 // });
+
+frappe.ui.form.on("AI Query", {
+	refresh: function(frm) {
+
+	}
+});
+
