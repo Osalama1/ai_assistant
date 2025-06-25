@@ -1,0 +1,13 @@
+litellm
+
+
+
+
+pymupdf
+pdfplumber
+python-docx
+openpyxl
+opencv-python
+pytesseract
+
+
