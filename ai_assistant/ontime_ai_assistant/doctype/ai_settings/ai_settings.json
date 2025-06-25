@@ -46,3 +46,33 @@
  "sort_order": "DESC",
  "states": []
 }
+{
+ "doctype": "DocType",
+ "name": "AI Settings",
+ "module": "AI Assistant",
+ "issingle": 1,
+ "fields": [
+  {
+   "fieldname": "default_ai_provider",
+   "fieldtype": "Link",
+   "label": "Default AI Provider",
+   "options": "AI Provider"
+  },
+  {
+   "fieldname": "enable_document_analysis",
+   "fieldtype": "Check",
+   "label": "Enable Document Analysis"
+  }
+ ],
+ "permissions": [
+  {
+   "email": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ]
+}
+

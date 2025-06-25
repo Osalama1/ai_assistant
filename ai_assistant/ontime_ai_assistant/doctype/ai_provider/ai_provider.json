@@ -1,41 +1,38 @@
 {
- "actions": [],
- "allow_rename": 1,
- "creation": "2025-06-24 00:48:20.150361",
  "doctype": "DocType",
- "engine": "InnoDB",
- "field_order": [
-  "provider_type"
- ],
+ "name": "AI Provider",
+ "module": "AI Assistant",
+ "issingle": 1,
  "fields": [
   {
    "fieldname": "provider_type",
    "fieldtype": "Select",
-   "label": "provider type",
-   "options": "Gemini\nChatGPT\nDeepSeek"
+   "label": "AI Provider Type",
+   "options": "Gemini\nOpenAI\nDeepSeek\nClaude\nCohere\nMistral",
+   "reqd": 1
+  },
+  {
+   "fieldname": "api_endpoint",
+   "fieldtype": "Data",
+   "label": "API Endpoint",
+   "reqd": 1
+  },
+  {
+   "fieldname": "api_key",
+   "fieldtype": "Password",
+   "label": "API Key",
+   "reqd": 1
   }
  ],
- "index_web_pages_for_search": 1,
- "issingle": 1,
- "links": [],
- "modified": "2025-06-24 00:49:52.783297",
- "modified_by": "Administrator",
- "module": "Ontime Ai Assistant",
- "name": "AI Provider",
- "owner": "Administrator",
  "permissions": [
   {
-   "create": 1,
-   "delete": 1,
    "email": 1,
-   "print": 1,
    "read": 1,
+   "report": 1,
    "role": "System Manager",
    "share": 1,
    "write": 1
   }
- ],
- "sort_field": "modified",
- "sort_order": "DESC",
- "states": []
+ ]
 }
+

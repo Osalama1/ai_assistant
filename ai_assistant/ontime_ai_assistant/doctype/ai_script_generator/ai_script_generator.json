@@ -40,3 +40,38 @@
  "sort_order": "DESC",
  "states": []
 }
+{
+ "doctype": "DocType",
+ "name": "AI Script Generator",
+ "module": "AI Assistant",
+ "autoname": "autoincrement",
+ "fields": [
+  {
+   "fieldname": "script_type",
+   "fieldtype": "Select",
+   "label": "Script Type",
+   "options": "Client Script\nServer Script"
+  },
+  {
+   "fieldname": "prompt",
+   "fieldtype": "Long Text",
+   "label": "Prompt"
+  },
+  {
+   "fieldname": "generated_script",
+   "fieldtype": "Code",
+   "label": "Generated Script"
+  }
+ ],
+ "permissions": [
+  {
+   "email": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ]
+}
+

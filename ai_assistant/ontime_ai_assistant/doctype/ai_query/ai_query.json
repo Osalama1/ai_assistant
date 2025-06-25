@@ -1,43 +1,46 @@
 {
- "actions": [],
- "allow_rename": 1,
- "autoname": "naming_series:",
- "creation": "2025-06-24 00:36:05.469393",
  "doctype": "DocType",
- "engine": "InnoDB",
- "field_order": [
-  "naming_series"
- ],
+ "name": "AI Query",
+ "module": "AI Assistant",
+ "autoname": "autoincrement",
  "fields": [
   {
-   "fieldname": "naming_series",
+   "fieldname": "query_text",
+   "fieldtype": "Long Text",
+   "label": "Query Text"
+  },
+  {
+   "fieldname": "response_text",
+   "fieldtype": "Long Text",
+   "label": "Response Text"
+  },
+  {
+   "fieldname": "query_type",
    "fieldtype": "Select",
-   "label": "naming_series"
+   "label": "Query Type",
+   "options": "Natural Language\nScript Generation\nDocument Analysis"
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User"
+  },
+  {
+   "fieldname": "query_date",
+   "fieldtype": "Datetime",
+   "label": "Query Date"
   }
  ],
- "index_web_pages_for_search": 1,
- "links": [],
- "modified": "2025-06-24 00:36:47.476953",
- "modified_by": "Administrator",
- "module": "Ontime Ai Assistant",
- "name": "AI Query",
- "naming_rule": "By \"Naming Series\" field",
- "owner": "Administrator",
  "permissions": [
   {
-   "create": 1,
-   "delete": 1,
    "email": 1,
-   "export": 1,
-   "print": 1,
    "read": 1,
    "report": 1,
    "role": "System Manager",
    "share": 1,
    "write": 1
   }
- ],
- "sort_field": "modified",
- "sort_order": "DESC",
- "states": []
+ ]
 }
+
