@@ -12,13 +12,28 @@ def get_chat_response(user_query):
     doctype_name = None
     data = {}
     filters = {}
+    fields = ["*"]
+    group_by = None
+    order_by = None
+    limit_start = 0
+    limit_page_length = 20
     is_erp_command = False
     response_message = None
 
     lower_query = user_query.lower()
 
     # --- ERP Command Parsing ---
-    # Create a new item group for electronics
+    # Example Queries:
+    # "Create a new item group for electronics"
+    # "Show me overdue invoices for April"
+    # "Analyze this Excel sheet and generate items"
+    # "Upload contract.pdf and extract customer info"
+    # "Show me all quotations for client Ahmed."
+    # "كم عدد فواتير البيع اليوم؟" (How many sales invoices today?)
+    # "أنشئ عميل جديد باسم سالم" (Create a new customer named Salem)
+    # "افتح قائمة العملاء" (Open customer list)
+
+    # Create/Update/Delete Records
     if "create" in lower_query and "item group" in lower_query:
         command_type = "create"
         doctype_name = "Item Group"
@@ -27,47 +42,65 @@ def get_chat_response(user_query):
             item_group_name = parts[1].strip().replace("electronics", "Electronics").title()
             data = {"item_group_name": item_group_name, "is_group": 1}
         is_erp_command = True
+    elif "أنشئ عميل جديد باسم" in lower_query or "create a new customer named" in lower_query:
+        command_type = "create"
+        doctype_name = "Customer"
+        customer_name = lower_query.split("باسم")[-1].strip().title() if "باسم" in lower_query else lower_query.split("named")[-1].strip().title()
+        data = {"customer_name": customer_name}
+        is_erp_command = True
+    elif "create a sales order for" in lower_query:
+        command_type = "create"
+        doctype_name = "Sales Order"
+        customer_name = lower_query.split("for")[-1].strip().title()
+        data = {"customer": customer_name, "naming_series": "SO-"}
+        response_message = "Sales Order creation initiated. Please provide more details like items and quantities."
+        is_erp_command = True
 
-    # Show me overdue invoices for April
-    elif "show me" in lower_query and "overdue invoices" in lower_query:
+    # Read/Analyze ERP Data
+    elif "show me overdue invoices" in lower_query:
         command_type = "read"
         doctype_name = "Sales Invoice"
-        # Basic date parsing, will be enhanced with NLP
-        if "april" in lower_query:
-            filters = {"due_date": ["<=", frappe.utils.get_datetime(frappe.utils.get_last_day("2025-04-30"))], "outstanding_amount": [">", 0]}
-        else:
-            filters = {"outstanding_amount": [">", 0]}
+        filters = {"due_date": ["<=", frappe.utils.today()], "outstanding_amount": [">", 0]}
+        if "for april" in lower_query:
+            filters["posting_date"] = [">=", "2025-04-01"], ["<=", "2025-04-30"]
         is_erp_command = True
-
-    # Analyze this Excel sheet and generate items
-    elif "analyze" in lower_query and ("excel sheet" in lower_query or "pdf" in lower_query or "word" in lower_query or "image" in lower_query):
-        command_type = "analyze_document"
-        # This will require a file_url and analysis_prompt from the frontend
-        # For now, we return a message indicating the need for file upload
-        response_message = "Please upload the file for analysis. File analysis functionality is under development."
-        is_erp_command = True
-
-    # Upload contract.pdf and extract customer info
-    elif "upload" in lower_query and ("pdf" in lower_query or "word" in lower_query or "excel" in lower_query or "image" in lower_query):
-        command_type = "upload_document"
-        # This will require a file_url, document_name, and document_type from the frontend
-        response_message = "Please upload the file. File upload functionality is under development."
-        is_erp_command = True
-
-    # Show me all quotations for client Ahmed.
-    elif "show me all quotations" in lower_query and "for client" in lower_query:
+    elif "show me all quotations for client" in lower_query:
         command_type = "read"
         doctype_name = "Quotation"
         client_name = lower_query.split("for client")[-1].strip().title()
         filters = {"customer_name": client_name}
         is_erp_command = True
+    elif "كم عدد فواتير البيع اليوم؟" in lower_query or "how many sales invoices today" in lower_query:
+        command_type = "read"
+        doctype_name = "Sales Invoice"
+        filters = {"posting_date": frappe.utils.today()}
+        fields = ["count(name) as total_invoices"]
+        is_erp_command = True
+
+    # File Understanding
+    elif "analyze" in lower_query and ("excel sheet" in lower_query or "pdf" in lower_query or "word" in lower_query or "image" in lower_query):
+        command_type = "analyze_document"
+        response_message = "Please upload the file for analysis. File analysis functionality is under development."
+        is_erp_command = True
+    elif "upload" in lower_query and ("pdf" in lower_query or "word" in lower_query or "excel" in lower_query or "image" in lower_query):
+        command_type = "upload_document"
+        response_message = "Please upload the file. File upload functionality is under development."
+        is_erp_command = True
+
+    # Navigate Between DocTypes (Frontend will handle this, backend just acknowledges)
+    elif "افتح قائمة العملاء" in lower_query or "go to customer list" in lower_query:
+        response_message = {"status": "navigate", "path": "/app/customer", "message": "Opening Customer List."} # Frontend will interpret this
+        is_erp_command = True
+    elif "go to item group settings" in lower_query:
+        response_message = {"status": "navigate", "path": "/app/item-group", "message": "Opening Item Group settings."} # Frontend will interpret this
+        is_erp_command = True
 
     # --- Execute Command or Get AI Response ---
     if is_erp_command:
         if response_message:
-            response = {"status": "info", "message": response_message}
+            response = response_message
         else:
-            response = execute_frappe_command(command_type, doctype_name, data=data, filters=filters, user=current_user)
+            response = execute_frappe_command(command_type, doctype_name, data=data, filters=filters, user=current_user, fields=fields, group_by=group_by, order_by=order_by, limit_start=limit_start, limit_page_length=limit_page_length)
     else:
         modified_query = user_query
         if "Sales User" in user_roles:

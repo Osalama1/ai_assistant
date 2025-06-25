@@ -76,6 +76,50 @@ class AIAssistant {
                 this.generateScript(prompt, scriptType);
             }
         });
+
+        // Send button click
+        document.addEventListener(\'click\', (e) => {
+            if (e.target.matches(\'#ai-send-button\')) {
+                const input = document.getElementById(\'ai-chat-input\');
+                this.sendQuery(input.value);
+                input.value = \'\'; // Clear input after sending
+            }
+        });
+
+        // Enter key press in input field
+        document.addEventListener(\'keypress\', (e) => {
+            if (e.target.matches(\'#ai-chat-input\') && e.key === \'Enter\') {
+                const input = document.getElementById(\'ai-chat-input\');
+                this.sendQuery(input.value);
+                input.value = \'\'; // Clear input after sending
+            }
+        });
+
+        // Voice-to-text (Speech Recognition API)
+        if (\'SpeechRecognition\' in window || \'webkitSpeechRecognition\' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = \'en-US\'; // Default language, will be dynamic
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById(\'ai-chat-input\').value = transcript;
+                this.sendQuery(transcript);
+            };
+
+            recognition.onerror = (event) => {
+                console.error(\'Speech recognition error:\', event.error);
+                this.addChatMessage(\'Voice input error. Please try typing.\', \'ai\');
+            };
+
+            document.addEventListener(\'click\', (e) => {
+                if (e.target.matches(\'#ai-voice-input-button\')) {
+                    recognition.start();
+                    this.addChatMessage(\'Listening...\', \'ai\');
+                }
+            });
+        }
     }
 
     toggleChatWidget() {
@@ -95,7 +139,7 @@ class AIAssistant {
             // Show typing indicator
             this.showTypingIndicator();
 
-            // Determine query type
+            // Determine query type (this will be more sophisticated with NLP)
             const queryType = this.determineQueryType(query);
             
             // Send to appropriate endpoint
@@ -109,9 +153,24 @@ class AIAssistant {
             // Hide typing indicator
             this.hideTypingIndicator();
 
+            // Handle navigation commands from backend
+            if (response && response.status === \'navigate\' && response.path) {
+                this.addChatMessage(response.message || \'Navigating...\', \'ai\');
+                window.location.href = response.path; // Redirect to the specified path
+                return; // Stop further processing
+            }
+
             // Add AI response
             if (response.message) {
                 this.addChatMessage(response.message, \'ai\');
+            } else if (response.data) {
+                // Handle structured data responses (e.g., from ERP commands)
+                let formattedData = JSON.stringify(response.data, null, 2);
+                if (response.summary) {
+                    this.addChatMessage(`${response.summary}\n\n<pre><code>${formattedData}</code></pre>`, \'ai\');
+                } else {
+                    this.addChatMessage(`<pre><code>${formattedData}</code></pre>`, \'ai\');
+                }
             } else {
                 this.addChatMessage(`Sorry, I encountered an error: ${response.error || \'Unknown error\'}`, \'ai\');
             }
@@ -272,10 +331,8 @@ class AIAssistant {
         
         // Format JSON data nicely
         try {
-            if (text.trim().startsWith(\'{\') || text.trim().startsWith(\'[\')) {
-                const parsed = JSON.parse(text);
-                formatted = \'<pre>\'+ JSON.stringify(parsed, null, 2) + \'</pre>\';
-            }
+            const parsed = JSON.parse(text);
+            formatted = \'<pre>\'+ JSON.stringify(parsed, null, 2) + \'</pre>\';
         } catch (e) {
             // Not JSON, keep original formatting
         }
@@ -357,7 +414,7 @@ class AIAssistant {
             
             if (uploadData.message) {
                 // Process document
-                const processResponse = await fetch(\'/api/method/ai_assistant.ontime_ai_assistant.api.document_analysis.upload_document\', {
+                const processResponse = await fetch(\'/api/method/ai_assistant.ontime_ai_assistant.api.chat.upload_and_analyze_document\', {
                     method: \'POST\',
                     headers: {
                         \'Content-Type\': \'application/json\',
@@ -405,7 +462,7 @@ class AIAssistant {
 
         const checkStatus = async () => {
             try {
-                const response = await fetch(\'/api/method/ai_assistant.ontime_ai_assistant.api.document_analysis.get_processing_status\', {
+                const response = await fetch(\'/api/method/ai_assistant.ontime_ai_assistant.api.chat.get_document_analysis_status\', {
                     method: \'POST\',
                     headers: {
                         \'Content-Type\': \'application/json\',
@@ -424,11 +481,11 @@ class AIAssistant {
                         
                         let message = `Document "${fileName}" processed successfully!`;
                         if (data.message.extracted_data) {
-                            message += \'\\n\\nExtracted data:\\n\' + 
+                            message += \'\\n\\nExtracted data:\\n\'+ 
                                      JSON.stringify(data.message.extracted_data, null, 2);
                         }
                         if (data.message.created_records) {
-                            message += \'\\n\\nCreated records:\\n\' + 
+                            message += \'\\n\\nCreated records:\\n\'+ 
                                      JSON.stringify(data.message.created_records, null, 2);
                         }
                         
@@ -442,25 +499,31 @@ class AIAssistant {
                             `Processing failed for "${fileName}": ${data.message.error || \'Unknown error\'}`, 
                             \'ai\'
                         );
-                        
-                    } else if (status === \'Processing\' && attempts < maxAttempts) {
-                        attempts++;
-                        setTimeout(checkStatus, 3000);
                     } else {
-                        this.updateFileStatus(fileName, \'failed\');
-                        this.addChatMessage(`Processing timeout for "${fileName}".`, \'ai\');
+                        // Still processing, check again after a delay
+                        if (attempts < maxAttempts) {
+                            attempts++;
+                            setTimeout(checkStatus, 3000); // Check every 3 seconds
+                        } else {
+                            this.updateFileStatus(fileName, \'failed\');
+                            this.addChatMessage(
+                                `Document "${fileName}" processing timed out.`, 
+                                \'ai\'
+                            );
+                        }
                     }
+                } else {
+                    this.updateFileStatus(fileName, \'failed\');
+                    this.addChatMessage(`Error monitoring processing for "${fileName}": ${data.message.error || \'Unknown error\'}`, \'ai\');
                 }
             } catch (error) {
-                console.error(\'Status check error:\', error);
-                if (attempts < maxAttempts) {
-                    attempts++;
-                    setTimeout(checkStatus, 3000);
-                }
+                this.updateFileStatus(fileName, \'failed\');
+                this.addChatMessage(`Error checking processing status for "${fileName}": ${error.message}`, \'ai\');
+                console.error(\'Monitor processing error:\', error);
             }
         };
 
-        checkStatus();
+        setTimeout(checkStatus, 3000); // Initial check after 3 seconds
     }
 
     addFileToUI(file) {
@@ -469,64 +532,63 @@ class AIAssistant {
 
         const fileItem = document.createElement(\'div\');
         fileItem.className = \'ai-file-item\';
-        fileItem.id = `file-${file.name.replace(/\\s/g, \'-\' )}`;
+        fileItem.id = `file-${file.name.replace(/\s/g, \'-\' )}`;
         fileItem.innerHTML = `
-            <i class="fas fa-file ai-file-icon"></i>
-            <div class="ai-file-info">
-                <div class="ai-file-name">${file.name}</div>
-                <div class="ai-file-size">${(file.size / 1024).toFixed(2)} KB</div>
-            </div>
-            <div class="ai-file-status processing">Processing</div>
+            <span>${file.name}</span>
+            <span class="ai-file-status">Pending...</span>
         `;
         fileList.appendChild(fileItem);
     }
 
     updateFileStatus(fileName, status) {
-        const fileItem = document.getElementById(`file-${fileName.replace(/\\s/g, \'-\' )}`);
+        const fileItem = document.getElementById(`file-${fileName.replace(/\s/g, \'-\' )}`);
         if (fileItem) {
-            const statusDiv = fileItem.querySelector(\.ai-file-status\');
-            if (statusDiv) {
-                statusDiv.className = `ai-file-status ${status}`;
-                statusDiv.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+            const statusSpan = fileItem.querySelector(\.ai-file-status\');
+            if (statusSpan) {
+                statusSpan.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+                fileItem.classList.remove(\'pending\', \'processing\', \'completed\', \'failed\');
+                fileItem.classList.add(status);
             }
         }
     }
 
     detectDocumentType(fileName) {
         const ext = fileName.split(\'.\').pop().toLowerCase();
-        if ([\'pdf\'].includes(ext)) return \'PDF\';
-        if ([\'jpg\', \'jpeg\', \'png\', \'gif\', \'bmp\'].includes(ext)) return \'Image\';
-        if ([\'docx\', \'doc\'].includes(ext)) return \'Word Document\';
-        if ([\'xlsx\', \'xls\'].includes(ext)) return \'Excel Spreadsheet\';
-        return \'Other\';
+        switch (ext) {
+            case \'pdf\': return \'PDF\';
+            case \'docx\':
+            case \'doc\': return \'Word Document\';
+            case \'xlsx\':
+            case \'xls\': return \'Excel Spreadsheet\';
+            case \'png\':
+            case \'jpg\':
+            case \'jpeg\':
+            case \'gif\':
+            case \'bmp\': return \'Image\';
+            default: return \'Unknown\';
+        }
+    }
+
+    loadChatHistory() {
+        // Load from local storage or Frappe user settings
+        const storedHistory = localStorage.getItem(\'aiAssistantChatHistory\');
+        if (storedHistory) {
+            this.chatHistory = JSON.parse(storedHistory);
+            this.chatHistory.forEach(msg => this.addChatMessage(msg.text, msg.sender, msg.metadata));
+        }
+    }
+
+    saveChatHistory() {
+        localStorage.setItem(\'aiAssistantChatHistory\', JSON.stringify(this.chatHistory));
     }
 
     getCSRFToken() {
         return frappe.csrf_token;
     }
-
-    sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    loadChatHistory() {
-        // Load from localStorage or server
-        const history = localStorage.getItem(\'ai_chat_history\');
-        if (history) {
-            this.chatHistory = JSON.parse(history);
-            this.chatHistory.forEach(msg => {
-                this.addChatMessage(msg.text, msg.sender, msg.metadata);
-            });
-        }
-    }
-
-    saveChatHistory() {
-        localStorage.setItem(\'ai_chat_history\', JSON.stringify(this.chatHistory));
-    }
 }
 
-// Initialize the AI Assistant when the DOM is ready
-document.addEventListener(\'DOMContentLoaded\', () => {
+// Initialize the assistant when the document is ready
+frappe.ready(() => {
     window.aiAssistant = new AIAssistant();
 });
 
