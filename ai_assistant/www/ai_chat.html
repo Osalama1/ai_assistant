@@ -107,7 +107,7 @@
         }
 
         .message-content::before {
-            content: '';
+            content: 
             position: absolute;
             top: 15px;
             width: 0;
@@ -327,7 +327,7 @@
                 </div>
                 <div class="message-content">
                     <div class="message-text">
-                        Hello! I'm your AI Assistant for ERPNext. I can help you with:
+                        Hello! I\"m your AI Assistant for ERPNext. I can help you with:
                         <br><br>
                         • Query your data: "How many sales orders today?"
                         <br>
@@ -401,53 +401,7 @@
     </div>
 
     <script src="/assets/ai_assistant/js/ai_assistant.js"></script>
-    <script>
-        // Initialize the AI Assistant
-        document.addEventListener('DOMContentLoaded', function() {
-            const aiAssistant = new AIAssistant();
-            aiAssistant.init();
-
-            // Event listeners for buttons and input field
-            document.getElementById('sendMessageBtn').addEventListener('click', () => {
-                const input = document.getElementById('chatInput');
-                aiAssistant.sendQuery(input.value);
-                input.value = ''; // Clear input after sending
-            });
-
-            document.getElementById('chatInput').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    const input = document.getElementById('chatInput');
-                    aiAssistant.sendQuery(input.value);
-                    input.value = ''; // Clear input after sending
-                }
-            });
-
-            document.getElementById('toggleFileUploadBtn').addEventListener('click', () => {
-                aiAssistant.toggleFileUpload();
-            });
-            document.getElementById('toggleFileUploadBtn2').addEventListener('click', () => {
-                aiAssistant.toggleFileUpload();
-            });
-
-            // Quick action buttons
-            document.querySelectorAll('.quick-action').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    const query = e.target.dataset.query;
-                    if (query) {
-                        aiAssistant.sendQuery(query);
-                    }
-                });
-            });
-
-            // Auto-resize textarea
-            const chatInput = document.getElementById('chatInput');
-            chatInput.addEventListener('input', function() {
-                this.style.height = 'auto';
-                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-            });
-        });
-    </script>
 </body>
 </html>
+
 
