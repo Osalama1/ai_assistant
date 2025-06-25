@@ -281,12 +281,7 @@ class AIAssistant {
             }
         }
 
-        messageDiv.innerHTML = `
-            <div class="message-avatar">${avatarContent}</div>
-            <div class="message-content">
-                <div class="message-text">${messageText}</div>
-            </div>
-        `;
+        messageDiv.innerHTML = `\n            <div class="message-avatar">${avatarContent}</div>\n            <div class="message-content">\n                <div class="message-text">${messageText}</div>\n            </div>\n        `;
 
         chatMessages.appendChild(messageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -335,8 +330,17 @@ class AIAssistant {
 
 // Global initialization
 document.addEventListener("DOMContentLoaded", function() {
-    const aiAssistant = new AIAssistant();
-    aiAssistant.init();
+    // Ensure Frappe is loaded before initializing AIAssistant
+    if (typeof frappe !== 'undefined' && frappe.ready) {
+        frappe.ready(() => {
+            window.aiAssistant = new AIAssistant();
+            window.aiAssistant.init();
+        });
+    } else {
+        // Fallback for non-Frappe environments or if frappe is not yet ready
+        window.aiAssistant = new AIAssistant();
+        window.aiAssistant.init();
+    }
 });
 
 
