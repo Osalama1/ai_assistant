@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant - ERPNext</title>
+    <link rel="stylesheet" href="/assets/ai_assistant/css/ai_assistant.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .chat-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 800px;
+            height: 600px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .chat-header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .chat-header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background: #007bff;
+        }
+
+        .message.ai .message-avatar {
+            background: #28a745;
+        }
+
+        .message-content {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 18px;
+            max-width: 70%;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .message.user .message-content {
+            background: #007bff;
+            color: white;
+        }
+
+        .message-content::before {
+            content: \'\';
+            position: absolute;
+            top: 15px;
+            width: 0;
+            height: 0;
+            border: 8px solid transparent;
+        }
+
+        .message.user .message-content::before {
+            right: -16px;
+            border-left-color: #007bff;
+        }
+
+        .message.ai .message-content::before {
+            left: -16px;
+            border-right-color: white;
+        }
+
+        .message-text {
+            line-height: 1.5;
+        }
+
+        .message-meta {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 8px;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .chat-input {
+            flex: 1;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            padding: 12px 20px;
+            font-size: 16px;
+            resize: none;
+            min-height: 50px;
+            max-height: 120px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        .chat-input:focus {
+            border-color: #007bff;
+        }
+
+        .chat-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 12px 16px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+            transform: translateY(-2px);
+        }
+
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 15px 20px;
+            background: white;
+            border-radius: 18px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #007bff;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% {
+                transform: scale(0);
+                opacity: 0.5;
+            }
+            40% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .file-upload-area {
+            border: 2px dashed #007bff;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: none;
+        }
+
+        .file-upload-area:hover {
+            background: #f8f9ff;
+        }
+
+        .file-upload-area.dragover {
+            background: #e3f2fd;
+            border-color: #1976d2;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .quick-action {
+            background: #e9ecef;
+            border: none;
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .quick-action:hover {
+            background: #007bff;
+            color: white;
+        }
+
+        .confidence-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        .confidence-high { background: #d4edda; color: #155724; }
+        .confidence-medium { background: #fff3cd; color: #856404; }
+        .confidence-low { background: #f8d7da; color: #721c24; }
+
+        @media (max-width: 768px) {
+            .chat-container {
+                height: 100vh;
+                border-radius: 0;
+                max-width: 100%;
+            }
+
+            .message-content {
+                max-width: 85%;
+            }
+
+            .quick-actions {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1><i class="fas fa-robot"></i> AI Assistant</h1>
+            <p>Ask me about your ERPNext data or upload documents for analysis</p>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="message ai">
+                <div class="message-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="message-content">
+                    <div class="message-text">
+                        Hello! I\'m your AI Assistant for ERPNext. I can help you with:
+                        <br><br>
+                        • Query your data: "How many sales orders today?"
+                        <br>
+                        • Create records: "Create sales order for customer Omar with item TV"
+                        <br>
+                        • Analyze documents: Upload invoices, POs, receipts for automatic processing
+                        <br>
+                        • Get insights: "Show me sales trends this month"
+                        <br><br>
+                        What would you like to do?
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="typing-indicator" id="typingIndicator">
+            <div class="message-avatar">
+                <i class="fas fa-robot"></i>
+            </div>
+            <div class="typing-dots">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+            <span>AI is thinking...</span>
+        </div>
+
+        <div class="chat-input-container">
+            <div class="quick-actions">
+                <button class="quick-action" onclick="sendQuickQuery(\'How many sales orders today?\')">
+                    Sales Orders Today
+                </button>
+                <button class="quick-action" onclick="sendQuickQuery(\'How many invoices this month?\')">
+                    Invoices This Month
+                </button>
+                <button class="quick-action" onclick="sendQuickQuery(\'Show pending purchase orders\')">
+                    Pending POs
+                </button>
+                <button class="quick-action" onclick="toggleFileUpload()">
+                    Upload Document
+                </button>
+            </div>
+
+            <div class="file-upload-area" id="fileUploadArea">
+                <i class="fas fa-cloud-upload-alt" style="font-size: 24px; color: #007bff; margin-bottom: 10px;"></i>
+                <p>Drop files here or click to upload</p>
+                <p style="font-size: 12px; color: #6c757d; margin-top: 5px;">
+                    Supports PDF, Images, Word, Excel files
+                </p>
+                <input type="file" id="fileInput" style="display: none;" 
+                       accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx" multiple>
+            </div>
+
+            <div class="chat-input-wrapper">
+                <textarea 
+                    class="chat-input" 
+                    id="chatInput" 
+                    placeholder="Ask me anything about your ERPNext data..."
+                    rows="1"
+                ></textarea>
+                <div class="chat-actions">
+                    <button class="btn btn-secondary" onclick="toggleFileUpload()" title="Upload Document">
+                        <i class="fas fa-paperclip"></i>
+                    </button>
+                    <button class="btn btn-primary" onclick="sendMessage()" title="Send Message">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/assets/ai_assistant/js/ai_assistant.js"></script>
+    <script>
+        // Initialize the AI Assistant
+        document.addEventListener(\'DOMContentLoaded\', function() {
+            initializeAIAssistant();
+        });
+
+        let isFileUploadVisible = false;
+
+        function initializeAIAssistant() {
+            const chatInput = document.getElementById(\'chatInput\');
+            const fileInput = document.getElementById(\'fileInput\');
+            const fileUploadArea = document.getElementById(\'fileUploadArea\');
+
+            // Auto-resize textarea
+            chatInput.addEventListener(\'input\', function() {
+                this.style.height = \'auto\';
+                this.style.height = Math.min(this.scrollHeight, 120) + \'px\';
+            });
+
+            // Send message on Enter (but not Shift+Enter)
+            chatInput.addEventListener(\'keydown\', function(e) {
+                if (e.key === \'Enter\' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            // File upload handling
+            fileInput.addEventListener(\'change\', handleFileUpload);
+            
+            // Drag and drop
+            fileUploadArea.addEventListener(\'dragover\', function(e) {
+                e.preventDefault();
+                this.classList.add(\'dragover\');
+            });
+
+            fileUploadArea.addEventListener(\'dragleave\', function(e) {
+                e.preventDefault();
+                this.classList.remove(\'dragover\');
+            });
+
+            fileUploadArea.addEventListener(\'drop\', function(e) {
+                e.preventDefault();
+                this.classList.remove(\'dragover\');
+                const files = e.dataTransfer.files;
+                handleFiles(files);
+            });
+
+            fileUploadArea.addEventListener(\'click\', function() {
+                fileInput.click();
+            });
+        }
+
+        function sendMessage() {
+            const chatInput = document.getElementById(\'chatInput\');
+            const message = chatInput.value.trim();
+            
+            if (!message) return;
+
+            // Add user message to chat
+            addMessage(message, \'user\');
+            
+            // Clear input
+            chatInput.value = \'\';
+            chatInput.style.height = \'auto\';
+
+            // Show typing indicator
+            showTypingIndicator();
+
+            // Send to AI
+            processMessage(message);
+        }
+
+        function sendQuickQuery(query) {
+            addMessage(query, \'user\');
+            showTypingIndicator();
+            processMessage(query);
+        }
+
+        function addMessage(text, sender, metadata = {}) {
+            const chatMessages = document.getElementById(\'chatMessages\');
+            const messageDiv = document.createElement(\'div\');
+            messageDiv.className = `message ${sender}`;
+
+            const avatar = document.createElement(\'div\');
+            avatar.className = \'message-avatar\';
+            avatar.innerHTML = sender === \'user\' ? \'<i class="fas fa-user"></i>\' : \'<i class="fas fa-robot"></i>\';
+
+            const content = document.createElement(\'div\');
+            content.className = \'message-content\';
+
+            const messageText = document.createElement(\'div\');
+            messageText.className = \'message-text\';
+            messageText.innerHTML = text.replace(/\n/g, \'<br>\');
+
+            content.appendChild(messageText);
+
+            // Add confidence badge for AI responses
+            if (sender === \'ai\' && metadata.confidence) {
+                const confidenceBadge = document.createElement(\'div\');
+                const confidence = metadata.confidence;
+                let badgeClass = \'confidence-low\';
+                if (confidence > 0.8) badgeClass = \'confidence-high\';
+                else if (confidence > 0.6) badgeClass = \'confidence-medium\';
+                
+                confidenceBadge.className = `confidence-badge ${badgeClass}`;
+                confidenceBadge.textContent = `Confidence: ${(confidence * 100).toFixed(0)}%`;
+                content.appendChild(confidenceBadge);
+            }
+
+            // Add timestamp
+            const meta = document.createElement(\'div\');
+            meta.className = \'message-meta\';
+            meta.textContent = new Date().toLocaleTimeString();
+            content.appendChild(meta);
+
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(content);
+            chatMessages.appendChild(messageDiv);
+
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            document.getElementById(\'typingIndicator\').style.display = \'flex\';
+        }
+
+        function hideTypingIndicator() {
+            document.getElementById(\'typingIndicator\').style.display = \'none\';
+        }
+
+        async function processMessage(message) {
+            // Simulate AI response
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            hideTypingIndicator();
+            addMessage(\'This is a simulated AI response to: \' + message, \'ai\', { confidence: 0.75 });
+        }
+
+        function toggleFileUpload() {
+            const fileUploadArea = document.getElementById(\'fileUploadArea\');
+            isFileUploadVisible = !isFileUploadVisible;
+            fileUploadArea.style.display = isFileUploadVisible ? \'block\' : \'none\';
+        }
+
+        function handleFileUpload(event) {
+            const files = event.target.files;
+            if (files.length > 0) {
+                // Handle file upload logic here
+                console.log(\'Files selected:\', files);
+                addMessage(`Selected ${files.length} file(s) for upload. (Upload functionality not yet implemented)`, \'ai\');
+            }
+        }
+
+        function handleFiles(files) {
+            if (files.length > 0) {
+                // Handle file upload logic here for drag and drop
+                console.log(\'Files dropped:\', files);
+                addMessage(`Dropped ${files.length} file(s) for upload. (Upload functionality not yet implemented)`, \'ai\');
+            }
+        }
+    </script>
+</body>
+</html>
+
