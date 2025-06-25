@@ -107,7 +107,7 @@
         }
 
         .message-content::before {
-            content: \'\';
+            content: '';
             position: absolute;
             top: 15px;
             width: 0;
@@ -327,7 +327,7 @@
                 </div>
                 <div class="message-content">
                     <div class="message-text">
-                        Hello! I\'m your AI Assistant for ERPNext. I can help you with:
+                        Hello! I'm your AI Assistant for ERPNext. I can help you with:
                         <br><br>
                         • Query your data: "How many sales orders today?"
                         <br>
@@ -357,16 +357,16 @@
 
         <div class="chat-input-container">
             <div class="quick-actions">
-                <button class="quick-action" onclick="sendQuickQuery(\'How many sales orders today?\')">
+                <button class="quick-action" data-query="How many sales orders today?">
                     Sales Orders Today
                 </button>
-                <button class="quick-action" onclick="sendQuickQuery(\'How many invoices this month?\')">
+                <button class="quick-action" data-query="How many invoices this month?">
                     Invoices This Month
                 </button>
-                <button class="quick-action" onclick="sendQuickQuery(\'Show pending purchase orders\')">
+                <button class="quick-action" data-query="Show pending purchase orders">
                     Pending POs
                 </button>
-                <button class="quick-action" onclick="toggleFileUpload()">
+                <button class="quick-action" id="toggleFileUploadBtn">
                     Upload Document
                 </button>
             </div>
@@ -389,10 +389,10 @@
                     rows="1"
                 ></textarea>
                 <div class="chat-actions">
-                    <button class="btn btn-secondary" onclick="toggleFileUpload()" title="Upload Document">
+                    <button class="btn btn-secondary" id="toggleFileUploadBtn2" title="Upload Document">
                         <i class="fas fa-paperclip"></i>
                     </button>
-                    <button class="btn btn-primary" onclick="sendMessage()" title="Send Message">
+                    <button class="btn btn-primary" id="sendMessageBtn" title="Send Message">
                         <i class="fas fa-paper-plane"></i>
                     </button>
                 </div>
@@ -403,165 +403,50 @@
     <script src="/assets/ai_assistant/js/ai_assistant.js"></script>
     <script>
         // Initialize the AI Assistant
-        document.addEventListener(\'DOMContentLoaded\', function() {
-            initializeAIAssistant();
-        });
+        document.addEventListener('DOMContentLoaded', function() {
+            const aiAssistant = new AIAssistant();
+            aiAssistant.init();
 
-        let isFileUploadVisible = false;
-
-        function initializeAIAssistant() {
-            const chatInput = document.getElementById(\'chatInput\');
-            const fileInput = document.getElementById(\'fileInput\');
-            const fileUploadArea = document.getElementById(\'fileUploadArea\');
-
-            // Auto-resize textarea
-            chatInput.addEventListener(\'input\', function() {
-                this.style.height = \'auto\';
-                this.style.height = Math.min(this.scrollHeight, 120) + \'px\';
+            // Event listeners for buttons and input field
+            document.getElementById('sendMessageBtn').addEventListener('click', () => {
+                const input = document.getElementById('chatInput');
+                aiAssistant.sendQuery(input.value);
+                input.value = ''; // Clear input after sending
             });
 
-            // Send message on Enter (but not Shift+Enter)
-            chatInput.addEventListener(\'keydown\', function(e) {
-                if (e.key === \'Enter\' && !e.shiftKey) {
+            document.getElementById('chatInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    sendMessage();
+                    const input = document.getElementById('chatInput');
+                    aiAssistant.sendQuery(input.value);
+                    input.value = ''; // Clear input after sending
                 }
             });
 
-            // File upload handling
-            fileInput.addEventListener(\'change\', handleFileUpload);
-            
-            // Drag and drop
-            fileUploadArea.addEventListener(\'dragover\', function(e) {
-                e.preventDefault();
-                this.classList.add(\'dragover\');
+            document.getElementById('toggleFileUploadBtn').addEventListener('click', () => {
+                aiAssistant.toggleFileUpload();
+            });
+            document.getElementById('toggleFileUploadBtn2').addEventListener('click', () => {
+                aiAssistant.toggleFileUpload();
             });
 
-            fileUploadArea.addEventListener(\'dragleave\', function(e) {
-                e.preventDefault();
-                this.classList.remove(\'dragover\');
+            // Quick action buttons
+            document.querySelectorAll('.quick-action').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const query = e.target.dataset.query;
+                    if (query) {
+                        aiAssistant.sendQuery(query);
+                    }
+                });
             });
 
-            fileUploadArea.addEventListener(\'drop\', function(e) {
-                e.preventDefault();
-                this.classList.remove(\'dragover\');
-                const files = e.dataTransfer.files;
-                handleFiles(files);
+            // Auto-resize textarea
+            const chatInput = document.getElementById('chatInput');
+            chatInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
             });
-
-            fileUploadArea.addEventListener(\'click\', function() {
-                fileInput.click();
-            });
-        }
-
-        function sendMessage() {
-            const chatInput = document.getElementById(\'chatInput\');
-            const message = chatInput.value.trim();
-            
-            if (!message) return;
-
-            // Add user message to chat
-            addMessage(message, \'user\');
-            
-            // Clear input
-            chatInput.value = \'\';
-            chatInput.style.height = \'auto\';
-
-            // Show typing indicator
-            showTypingIndicator();
-
-            // Send to AI
-            processMessage(message);
-        }
-
-        function sendQuickQuery(query) {
-            addMessage(query, \'user\');
-            showTypingIndicator();
-            processMessage(query);
-        }
-
-        function addMessage(text, sender, metadata = {}) {
-            const chatMessages = document.getElementById(\'chatMessages\');
-            const messageDiv = document.createElement(\'div\');
-            messageDiv.className = `message ${sender}`;
-
-            const avatar = document.createElement(\'div\');
-            avatar.className = \'message-avatar\';
-            avatar.innerHTML = sender === \'user\' ? \'<i class="fas fa-user"></i>\' : \'<i class="fas fa-robot"></i>\';
-
-            const content = document.createElement(\'div\');
-            content.className = \'message-content\';
-
-            const messageText = document.createElement(\'div\');
-            messageText.className = \'message-text\';
-            messageText.innerHTML = text.replace(/\n/g, \'<br>\');
-
-            content.appendChild(messageText);
-
-            // Add confidence badge for AI responses
-            if (sender === \'ai\' && metadata.confidence) {
-                const confidenceBadge = document.createElement(\'div\');
-                const confidence = metadata.confidence;
-                let badgeClass = \'confidence-low\';
-                if (confidence > 0.8) badgeClass = \'confidence-high\';
-                else if (confidence > 0.6) badgeClass = \'confidence-medium\';
-                
-                confidenceBadge.className = `confidence-badge ${badgeClass}`;
-                confidenceBadge.textContent = `Confidence: ${(confidence * 100).toFixed(0)}%`;
-                content.appendChild(confidenceBadge);
-            }
-
-            // Add timestamp
-            const meta = document.createElement(\'div\');
-            meta.className = \'message-meta\';
-            meta.textContent = new Date().toLocaleTimeString();
-            content.appendChild(meta);
-
-            messageDiv.appendChild(avatar);
-            messageDiv.appendChild(content);
-            chatMessages.appendChild(messageDiv);
-
-            // Scroll to bottom
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        function showTypingIndicator() {
-            document.getElementById(\'typingIndicator\').style.display = \'flex\';
-        }
-
-        function hideTypingIndicator() {
-            document.getElementById(\'typingIndicator\').style.display = \'none\';
-        }
-
-        async function processMessage(message) {
-            // Simulate AI response
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            hideTypingIndicator();
-            addMessage(\'This is a simulated AI response to: \' + message, \'ai\', { confidence: 0.75 });
-        }
-
-        function toggleFileUpload() {
-            const fileUploadArea = document.getElementById(\'fileUploadArea\');
-            isFileUploadVisible = !isFileUploadVisible;
-            fileUploadArea.style.display = isFileUploadVisible ? \'block\' : \'none\';
-        }
-
-        function handleFileUpload(event) {
-            const files = event.target.files;
-            if (files.length > 0) {
-                // Handle file upload logic here
-                console.log(\'Files selected:\', files);
-                addMessage(`Selected ${files.length} file(s) for upload. (Upload functionality not yet implemented)`, \'ai\');
-            }
-        }
-
-        function handleFiles(files) {
-            if (files.length > 0) {
-                // Handle file upload logic here for drag and drop
-                console.log(\'Files dropped:\', files);
-                addMessage(`Dropped ${files.length} file(s) for upload. (Upload functionality not yet implemented)`, \'ai\');
-            }
-        }
+        });
     </script>
 </body>
 </html>
