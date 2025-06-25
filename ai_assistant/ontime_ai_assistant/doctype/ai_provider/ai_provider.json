@@ -1,12 +1,20 @@
 {
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "prompt",
+ "creation": "2025-06-25 22:42:28.231304",
  "doctype": "DocType",
- "name": "AI Provider",
- "module": "Ontime Ai Assistant",
- "issingle": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "provider_type",
+  "api_endpoint",
+  "api_key"
+ ],
  "fields": [
   {
    "fieldname": "provider_type",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "AI Provider Type",
    "options": "Gemini\nOpenAI\nDeepSeek\nClaude\nCohere\nMistral",
    "reqd": 1
@@ -14,16 +22,25 @@
   {
    "fieldname": "api_endpoint",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "API Endpoint",
    "reqd": 1
   },
   {
    "fieldname": "api_key",
    "fieldtype": "Password",
+   "in_list_view": 1,
    "label": "API Key",
    "reqd": 1
   }
  ],
+ "links": [],
+ "modified": "2025-06-25 22:47:32.772260",
+ "modified_by": "Administrator",
+ "module": "Ontime Ai Assistant",
+ "name": "AI Provider",
+ "naming_rule": "Set by user",
+ "owner": "Administrator",
  "permissions": [
   {
    "email": 1,
@@ -33,6 +50,9 @@
    "share": 1,
    "write": 1
   }
- ]
+ ],
+ "quick_entry": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
 }
-
